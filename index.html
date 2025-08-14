@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IELTS Speaking Examiner (Offline, 1-file)</title>
+  <style>
+    :root{
+      --bg:#0b0f17; --card:#121826; --muted:#93a4b0; --accent:#5eead4; --text:#e6edf3; --danger:#ff6b6b; --ok:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{padding:16px 20px;position:sticky;top:0;background:linear-gradient(180deg,rgba(11,15,23,.95),rgba(11,15,23,.75) 60%,rgba(11,15,23,0));backdrop-filter:blur(8px);z-index:10;border-bottom:1px solid rgba(255,255,255,.06)}
+    h1{font-size:22px;margin:0;display:flex;align-items:center;gap:8px}
+    main{padding:14px;max-width:900px;margin:0 auto}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:14px;margin:10px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    label{font-size:13px;color:var(--muted);display:block;margin:10px 2px}
+    textarea,input,select{width:100%;background:#0d1320;color:var(--text);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;font-size:15px;outline:none}
+    textarea{min-height:90px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    button{appearance:none;border:0;cursor:pointer;background:#1f2937;color:var(--text);padding:12px 14px;border-radius:16px;font-weight:600}
+    button.primary{background:linear-gradient(135deg,#00ffa5,#00d4ff);color:#051014}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,.16)}
+    button.warn{background:#3a1111;color:#ffd6d6;border:1px solid #5c1a1a}
+    .grid{display:grid;gap:10px}
+    .hide{display:none!important}
+    .muted{color:var(--muted)}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.16);color:var(--muted)}
+    .qbox{font-size:18px;line-height:1.4}
+    .meter{height:8px;background:#0d1320;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
+    .meter>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#a78bfa)}
+    audio{width:100%}
+    .scoregrid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+    .score{font-weight:800}
+    .pill{padding:6px 10px;border-radius:999px;background:#0e1726;border:1px solid rgba(255,255,255,.08)}
+    .footer{color:var(--muted);font-size:12px;text-align:center;padding:16px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎤 IELTS Speaking Examiner (Demo, offline)</h1>
+    <div class="muted" style="font-size:12px;">Tập trung cho di động • Ghi âm + chấm điểm ước lượng theo tiêu chí IELTS</div>
+  </header>
+
+  <main>
+    <section class="card" id="setup">
+      <h2 style="margin:4px 0 10px">1) Nhập chủ đề & cài đặt</h2>
+      <div class="row">
+        <div class="grid">
+          <label>Ngôn ngữ chấm/nhận diện (Web Speech)
+            <select id="lang">
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+            </select>
+          </label>
+          <label>Thời lượng Part 2 (phút nói / không tính 1 phút chuẩn bị)
+            <input id="p2mins" type="number" min="1" max="4" value="2" />
+          </label>
+        </div>
+        <div class="grid">
+          <label>Tên thí sinh (tuỳ chọn)
+            <input id="candidate" placeholder="Ví dụ: Nguyen Van A"/>
+          </label>
+          <label>Ngày thi (tự điền nếu bỏ trống)
+            <input id="testdate" type="date" />
+          </label>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Part 1 – Chủ đề (ví dụ: Hometown)
+            <input id="topic1" placeholder="Hometown, Work/Study, Free time..."/>
+          </label>
+          <small class="muted">Hệ thống sẽ tự tạo ~8 câu hỏi ngắn dựa trên chủ đề.</small>
+        </div>
+        <div>
+          <label>Part 2 – Cue card (tiêu đề)
+            <input id="topic2" placeholder="Describe a book you recently read..."/>
+          </label>
+          <label>Gợi ý (mỗi dòng một ý)
+            <textarea id="topic2cues" placeholder="You should say:\n- what it is about\n- when you read it\n- why you chose it\n- and explain ..."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Part 3 – Chủ đề thảo luận chung
+            <input id="topic3" placeholder="Reading habits in your country"/>
+          </label>
+          <small class="muted">Hệ thống sẽ tự tạo ~5 câu hỏi chuyên sâu.</small>
+        </div>
+        <div class="grid">
+          <label>Lưu dữ liệu vào (trình duyệt) localStorage?
+            <select id="persist"><option value="yes">Có</option><option value="no">Không</option></select>
+          </label>
+          <div class="controls">
+            <button class="ghost" id="loadSample">Tải ví dụ</button>
+            <button class="primary" id="startBtn">Bắt đầu phỏng vấn</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card hide" id="exam">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="badge" id="stageBadge">Part 1</div>
+        <div class="pill">⏱️ <span id="timer">00:00</span></div>
+        <div class="pill">Câu <span id="qIdx">1</span>/<span id="qTotal">1</span></div>
+      </div>
+      <div style="margin-top:12px" class="qbox" id="questionText">Câu hỏi sẽ xuất hiện ở đây.</div>
+      <div id="prep" class="muted" style="margin:8px 0 4px 0"></div>
+      <div class="meter" title="Âm lượng tương đối">
+        <i id="vu"></i>
+      </div>
+      <div class="controls" style="margin-top:10px">
+        <button id="recBtn">🎙️ Bắt đầu ghi</button>
+        <button id="stopBtn" class="warn" disabled>⏹️ Dừng</button>
+        <button id="nextBtn" class="ghost" disabled>➡️ Câu tiếp</button>
+        <button id="repeatBtn" class="ghost" disabled>🔁 Ghi lại</button>
+      </div>
+      <div id="audioWrap" class="hide" style="margin-top:10px">
+        <audio id="player" controls></audio>
+        <div class="controls">
+          <button id="downloadBtn" class="ghost">⬇️ Tải câu trả lời (.webm)</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card hide" id="results">
+      <h2 style="margin:4px 0 10px">Kết quả & phản hồi (ước lượng)</h2>
+      <div class="row">
+        <div>
+          <div class="scoregrid">
+            <div>Fluency & Coherence</div><div class="score" id="s_fluency">-</div>
+            <div>Lexical Resource</div><div class="score" id="s_lex">-</div>
+            <div>Grammatical Range & Accuracy</div><div class="score" id="s_gram">-</div>
+            <div>Pronunciation</div><div class="score" id="s_pron">-</div>
+            <div style="border-top:1px solid rgba(255,255,255,.12);margin-top:6px"></div><div style="border-top:1px solid rgba(255,255,255,.12);margin-top:6px"></div>
+            <div>Overall (≈ trung bình có trọng số)</div><div class="score" id="s_overall">-</div>
+          </div>
+        </div>
+        <div>
+          <label>Transcript (nếu hỗ trợ bởi trình duyệt)
+            <textarea id="transcript" placeholder="Văn bản nhận dạng giọng nói sẽ hiển thị ở đây."></textarea>
+          </label>
+          <small class="muted">Lưu ý: Web Speech API chỉ chạy trên Chrome/Edge/Android. Kết quả chỉ <b>ước lượng</b>, không thay thế giám khảo thật.</small>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="exportBtn" class="ghost">📦 Xuất kết quả (.json)</button>
+        <button id="resetBtn">🔄 Làm lại</button>
+      </div>
+    </section>
+
+    <div class="footer">© 2025 – Single-file demo. Không gửi dữ liệu ra ngoài máy bạn.</div>
+  </main>
+
+  <script>
+  // ===== Utilities =====
+  const $ = (sel)=>document.querySelector(sel);
+  const fmt=(s)=>s.toString().padStart(2,'0');
+  const now=()=>new Date();
+
+  function saveLocal(key,value){ try{ if($('#persist').value==='yes'){ localStorage.setItem(key, JSON.stringify(value)); } }catch(e){} }
+  function loadLocal(key, def=null){ try{ const v = localStorage.getItem(key); return v? JSON.parse(v): def; }catch(e){ return def; } }
+
+  // ===== Question generation (simple templates) =====
+  function genPart1(topic){
+    const t = topic?.trim()||'your hometown';
+    const qs = [
+      `Do you work or study? Why did you choose it?`,
+      `Where is ${t} and what do you like about it?`,
+      `How often do you spend time on ${t}?`,
+      `What are the things you dislike about ${t}?`,
+      `Has ${t} changed in recent years?`,
+      `Do you prefer ${t} alone or with others?`,
+      `What will you do about ${t} next weekend?`,
+      `Is ${t} important in your country? Why/why not?`
+    ];
+    return qs;
+  }
+  function genPart3(topic){
+    const t = topic?.trim()||'this topic';
+    const qs = [
+      `Why do some people value ${t} more than others?`,
+      `How has technology influenced ${t}?`,
+      `Do you think schools should teach more about ${t}?`,
+      `What are the advantages and disadvantages related to ${t}?`,
+      `How might ${t} change in the next 20 years?`
+    ];
+    return qs;
+  }
+
+  // ===== Exam state =====
+  const state = {
+    stage: 1, // 1,2,3
+    qIndex: 0,
+    questions: [],
+    blobs: [],
+    transcripts: [],
+    startTs: null,
+    timerId: null,
+    media: {rec:null, stream:null, chunks:[]},
+    vu:{ctx:null, analyser:null, data:null},
+  };
+
+  // ===== Timer =====
+  function startTimer(){
+    const t0 = Date.now();
+    state.startTs = t0;
+    $('#timer').textContent = '00:00';
+    state.timerId = setInterval(()=>{
+      const s = Math.floor((Date.now()-t0)/1000);
+      $('#timer').textContent = `${fmt(Math.floor(s/60))}:${fmt(s%60)}`;
+    }, 250);
+  }
+  function stopTimer(){ clearInterval(state.timerId); state.timerId=null; }
+
+  // ===== Audio VU Meter =====
+  async function initVU(stream){
+    try{
+      const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      src.connect(analyser);
+      state.vu = {ctx, analyser, data};
+    }catch(e){ console.warn('AudioContext unavailable', e); }
+  }
+  function tickVU(){
+    const el = $('#vu');
+    if(state.vu.analyser){
+      state.vu.analyser.getByteTimeDomainData(state.vu.data);
+      // crude peak-to-peak
+      let min=255,max=0; for(const v of state.vu.data){ if(v<min)min=v; if(v>max)max=v; }
+      const amp = (max-min)/255; // 0..1
+      el.style.width = (Math.min(1, amp*3)*100)+'%';
+    }
+    requestAnimationFrame(tickVU);
+  }
+
+  // ===== Speech Recognition (if available) =====
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function transcribeWhileRecording(){
+    if(!SR) return null;
+    const rec = new SR();
+    rec.lang = $('#lang').value || 'en-US';
+    rec.interimResults = true; rec.continuous = true;
+    let text = '';
+    rec.onresult = (e)=>{
+      let str=''; for(let i=e.resultIndex;i<e.results.length;i++){ str += e.results[i][0].transcript; }
+      text += ' ' + str;
+      $('#transcript').value = text.trim();
+    };
+    rec.onerror = (e)=>console.warn('SR error', e);
+    rec.onend = ()=>{};
+    try{ rec.start(); }catch(e){}
+    return rec;
+  }
+
+  // ===== Recording controls =====
+  let speechRecHandle = null;
+  async function startRecording(){
+    $('#recBtn').disabled = true; $('#stopBtn').disabled = false; $('#repeatBtn').disabled = true; $('#nextBtn').disabled = true;
+    const stream = state.media.stream || await navigator.mediaDevices.getUserMedia({audio:true});
+    state.media.stream = stream;
+    await initVU(stream); tickVU();
+    const rec = new MediaRecorder(stream);
+    state.media.rec = rec; state.media.chunks = [];
+    rec.ondataavailable = (e)=>{ if(e.data.size>0) state.media.chunks.push(e.data); };
+    rec.onstop = ()=>{
+      const blob = new Blob(state.media.chunks, {type:'audio/webm'});
+      state.blobs[state.qIndex] = blob;
+      const url = URL.createObjectURL(blob);
+      $('#player').src = url; $('#audioWrap').classList.remove('hide');
+      $('#repeatBtn').disabled = false; $('#nextBtn').disabled = false; $('#stopBtn').disabled = true;
+      if(speechRecHandle){ try{ speechRecHandle.stop(); }catch(e){} }
+      stopTimer();
+    };
+    rec.start(); startTimer();
+    speechRecHandle = transcribeWhileRecording();
+  }
+  function stopRecording(){ if(state.media.rec && state.media.rec.state!=='inactive'){ state.media.rec.stop(); } }
+
+  // ===== Download current answer =====
+  function downloadCurrent(){
+    const idx = state.qIndex;
+    const blob = state.blobs[idx];
+    if(!blob) return;
+    const a = document.createElement('a');
+    const name = `IELTS_P${state.stage}_Q${idx+1}.webm`;
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  }
+
+  // ===== Simple scoring heuristics =====
+  function tokenizeWords(t){ return (t||'').toLowerCase().replace(/[^a-z\s']/gi,' ').split(/\s+/).filter(Boolean); }
+  const fillers = new Set(['um','uh','erm','like','you know','hmm','ah','eh']);
+  const common1000 = new Set('the,be,to,of,and,a,in,that,have,i,it,for,not,on,with,he,as,you,do,at,this,but,his,by,from,they,we,say,her,she,or,an,will,my,one,all,would,there,their,what,so,up,out,if,about,who,get,which,go,me'.split(','));
+
+  function scoreFromMetrics(m){
+    // Fluency: based on words per minute + filler density
+    let flu = 0;
+    if(m.wpm>=150) flu=8; else if(m.wpm>=130) flu=7; else if(m.wpm>=110) flu=6; else if(m.wpm>=90) flu=5; else if(m.wpm>=70) flu=4; else flu=3;
+    flu -= Math.min(2, Math.round(m.fillerPer100/5)); // penalize fillers
+
+    // Lexical: type-token ratio + rare words
+    let lex = 0;
+    if(m.ttr>=0.6) lex=8; else if(m.ttr>=0.52) lex=7; else if(m.ttr>=0.45) lex=6; else if(m.ttr>=0.38) lex=5; else if(m.ttr>=0.3) lex=4; else lex=3;
+    lex += (m.rarePct>0.25)?1:0; lex = Math.min(9, lex);
+
+    // Grammar (very rough): average sentence length + complex markers presence
+    let gram = 0;
+    if(m.avgSentLen>=18) gram=7; else if(m.avgSentLen>=14) gram=6; else if(m.avgSentLen>=10) gram=5; else gram=4;
+    gram += Math.min(2, Math.floor(m.complexMarkers/2));
+
+    // Pronunciation placeholder: estimate from speaking rate range
+    let pron = 6; // neutral baseline
+    if(m.wpm>=140 && m.wpm<=170) pron=7; else if(m.wpm<80 || m.wpm>190) pron=5;
+
+    // Overall weighted (FC 0.3, LR 0.25, GRA 0.25, PR 0.2)
+    const overall = (flu*0.3 + lex*0.25 + gram*0.25 + pron*0.2).toFixed(1);
+    return {flu, lex, gram, pron, overall};
+  }
+
+  function analyzeTranscript(t, durationSec){
+    const words = tokenizeWords(t);
+    const n = words.length;
+    const minutes = Math.max(1e-6, durationSec/60);
+    const wpm = n/minutes;
+    const uniq = new Set(words);
+    const ttr = (uniq.size)/(n||1);
+    const fillCount = words.filter(w=>fillers.has(w)).length;
+    const fillerPer100 = (fillCount/(n||1))*100;
+    const sents = (t.match(/[.!?]/g)||[]).length || 1;
+    const avgSentLen = n/Math.max(1,sents);
+    const complexMarkers = (t.match(/\b(although|though|however|moreover|therefore|because|which|that|whose|despite|whereas)\b/gi)||[]).length;
+    // rare word proxy (not in short common list)
+    const rare = words.filter(w=>!common1000.has(w));
+    const rarePct = (rare.length/(n||1));
+    return {n, wpm, ttr, fillerPer100, avgSentLen, complexMarkers, rarePct};
+  }
+
+  function gradeCurrent(){
+    const t = ($('#transcript').value||'').trim();
+    const durSec = Math.max(1, Math.floor((Date.now()-state.startTs)/1000));
+    const m = analyzeTranscript(t, durSec);
+    const s = scoreFromMetrics(m);
+    $('#s_fluency').textContent = s.flu.toFixed(1);
+    $('#s_lex').textContent = s.lex.toFixed(1);
+    $('#s_gram').textContent = s.gram.toFixed(1);
+    $('#s_pron').textContent = s.pron.toFixed(1);
+    $('#s_overall').textContent = s.overall;
+    return {metrics:m, scores:s, transcript:t};
+  }
+
+  // ===== Exam flow =====
+  function show(section){ ['setup','exam','results'].forEach(id=>$('#'+id).classList.add('hide')); $('#'+section).classList.remove('hide'); }
+
+  function buildQuestions(){
+    const p1 = genPart1($('#topic1').value);
+    const p2 = [{ cue: $('#topic2').value || 'Describe a memorable experience you had recently.', cues: ($('#topic2cues').value||'You should say:\n- when it happened\n- who was involved\n- what happened\n- and explain why it was memorable').split(/\n+/) }];
+    const p3 = genPart3($('#topic3').value);
+    state.questions = {p1, p2, p3};
+    saveLocal('ielts_setup', {
+      lang: $('#lang').value, p2mins: $('#p2mins').value, cand: $('#candidate').value, date: $('#testdate').value,
+      topic1: $('#topic1').value, topic2: $('#topic2').value, topic2cues: $('#topic2cues').value, topic3: $('#topic3').value
+    });
+  }
+
+  function enterPart1(){
+    state.stage = 1; state.qIndex = 0; $('#stageBadge').textContent = 'Part 1';
+    $('#qTotal').textContent = state.questions.p1.length; nextQuestion();
+  }
+  function enterPart2(){
+    state.stage = 2; state.qIndex = 0; $('#stageBadge').textContent = 'Part 2';
+    const mins = parseInt($('#p2mins').value||'2',10);
+    $('#qTotal').textContent = 1; // single long turn
+    $('#qIdx').textContent = 1;
+    const item = state.questions.p2[0];
+    $('#questionText').innerHTML = `<b>${item.cue}</b><br><small class="muted">You have 1 minute to prepare. Then speak for ${mins} minute(s).</small><br><ul>${item.cues.map(x=>`<li>${x.replace(/^[-•]\s?/,'')}</li>`).join('')}</ul>`;
+    $('#prep').textContent = '⏳ Chuẩn bị: 60 giây';
+    show('exam');
+    // 60s prep countdown
+    let prep = 60; const prepInt = setInterval(()=>{ prep--; $('#prep').textContent = `⏳ Chuẩn bị: ${prep}s`; if(prep<=0){ clearInterval(prepInt); $('#prep').textContent = '🎙️ Bắt đầu nói!'; startRecording(); setTimeout(()=>{ stopRecording(); }, mins*60*1000); } }, 1000);
+  }
+  function enterPart3(){
+    state.stage = 3; state.qIndex = 0; $('#stageBadge').textContent = 'Part 3';
+    $('#qTotal').textContent = state.questions.p3.length; nextQuestion();
+  }
+
+  function nextQuestion(){
+    show('exam');
+    const list = state.stage===1? state.questions.p1 : state.questions.p3;
+    if(state.qIndex>=list.length){
+      if(state.stage===1) return enterPart2();
+      if(state.stage===3) { show('results'); gradeCurrent(); return; }
+    }
+    const q = list[state.qIndex];
+    $('#qIdx').textContent = state.qIndex+1;
+    $('#questionText').textContent = q;
+    $('#prep').textContent = '';
+    $('#audioWrap').classList.add('hide');
+    $('#recBtn').disabled = false; $('#stopBtn').disabled = true; $('#nextBtn').disabled = true; $('#repeatBtn').disabled = true;
+  }
+
+  function finishQuestion(){
+    // Save transcript snapshot and move on
+    state.transcripts[state.qIndex] = $('#transcript').value;
+    state.qIndex++;
+    // After Part 2, go to Part 3
+    if(state.stage===2){ enterPart3(); return; }
+    nextQuestion();
+  }
+
+  // ===== Export results =====
+  function exportJSON(){
+    const data = {
+      candidate: $('#candidate').value||null,
+      date: $('#testdate').value || new Date().toISOString().slice(0,10),
+      lang: $('#lang').value,
+      stage: state.stage,
+      transcripts: state.transcripts,
+      scores: {
+        fluency: $('#s_fluency').textContent,
+        lexical: $('#s_lex').textContent,
+        grammar: $('#s_gram').textContent,
+        pronunciation: $('#s_pron').textContent,
+        overall: $('#s_overall').textContent,
+      }
+    };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:'application/json'}));
+    a.download = 'IELTS_speaking_result.json'; a.click();
+  }
+
+  // ===== UI wiring =====
+  $('#loadSample').onclick = ()=>{
+    $('#topic1').value = 'Hometown';
+    $('#topic2').value = 'Describe a book you recently read';
+    $('#topic2cues').value = 'You should say:\n- what it is about\n- when you read it\n- why you chose it\n- and explain what you learned from it';
+    $('#topic3').value = 'Reading habits in your country';
+  };
+
+  $('#startBtn').onclick = ()=>{
+    buildQuestions();
+    if(!$('#testdate').value){ const d=new Date(); $('#testdate').value = d.toISOString().slice(0,10); }
+    enterPart1();
+  };
+
+  $('#recBtn').onclick = startRecording;
+  $('#stopBtn').onclick = ()=>{ stopRecording(); $('#nextBtn').disabled=false; };
+  $('#repeatBtn').onclick = ()=>{ $('#transcript').value=''; startRecording(); };
+  $('#nextBtn').onclick = finishQuestion;
+  $('#downloadBtn').onclick = downloadCurrent;
+
+  $('#exportBtn').onclick = exportJSON;
+  $('#resetBtn').onclick = ()=>{ location.reload(); };
+
+  // Auto-restore settings
+  (function(){
+    const saved = loadLocal('ielts_setup');
+    if(saved){
+      $('#lang').value = saved.lang||'en-US';
+      $('#p2mins').value = saved.p2mins||'2';
+      $('#candidate').value = saved.cand||'';
+      $('#testdate').value = saved.date||'';
+      $('#topic1').value = saved.topic1||'';
+      $('#topic2').value = saved.topic2||'';
+      $('#topic2cues').value = saved.topic2cues||'';
+      $('#topic3').value = saved.topic3||'';
+    }
+  })();
+
+  // Show results section automatically after Part 3 last answer stops
+  // (We also call gradeCurrent() when showing results)
+  document.addEventListener('visibilitychange', ()=>{});
+
+  // When audio is recorded, we compute a quick grade too
+  $('#player').addEventListener('loadedmetadata', ()=>{ gradeCurrent(); });
+
+  </script>
+</body>
+</html>
